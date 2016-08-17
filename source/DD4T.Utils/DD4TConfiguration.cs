@@ -1,6 +1,7 @@
 ﻿using DD4T.ContentModel.Contracts.Configuration;
 using DD4T.ContentModel.Contracts.Providers;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
@@ -436,7 +437,7 @@ namespace DD4T.Utils
             }
         }
 
-        private Dictionary<string, int> _expirationPerRegion = new Dictionary<string, int>();
+        private ConcurrentDictionary<string, int> _expirationPerRegion = new ConcurrentDictionary<string, int>();
         public int GetExpirationForCacheRegion(string region)
         {
             if (!_expirationPerRegion.ContainsKey(region))
@@ -444,11 +445,12 @@ namespace DD4T.Utils
                 string s = SafeGetConfigSettingAsString(string.Format(ConfigurationKeys.CacheSettingsPerRegion, region));
                 if (string.IsNullOrEmpty(s))
                 {
-                    _expirationPerRegion.Add(region, DefaultCacheSettings);
+                    _expirationPerRegion.AddOrUpdate(region, DefaultCacheSettings, (key, value)=>DefaultCacheSettings);
                 }
                 else
                 {
-                    _expirationPerRegion.Add(region, SafeGetConfigSettingAsInt(string.Format(ConfigurationKeys.CacheSettingsPerRegion, region)));
+                    int cacheSetting = SafeGetConfigSettingAsInt(string.Format(ConfigurationKeys.CacheSettingsPerRegion, region));
+                    _expirationPerRegion.AddOrUpdate(region, cacheSetting, (key, value) => cacheSetting);
                 }
             }
             return _expirationPerRegion[region];
